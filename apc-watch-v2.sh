@@ -10,7 +10,11 @@ CLI_DIR="${APC_CLI_DIR:-$HOME/workspace/agentpeerchat-audit}"
 PROFILE="${AGENTPEERCHAT_CONFIG-$HOME/workspace/agentpeerchat/profile.json}"
 
 fetch_summary() {
-  (cd "$CLI_DIR" && AGENTPEERCHAT_CONFIG="$PROFILE" NODE_USE_ENV_PROXY=1 node dist/cli/agentpeerchat.mjs summary --once 2>/dev/null)
+  # timeout 10: the instance can go unresponsive; without a timeout a hung
+  # summary call blocks the whole 5s poll round indefinitely (no log, no
+  # retry). Failing fast lets the next round retry 5s later. Matches the
+  # thread calls (line 103), which already use timeout 10.
+  (cd "$CLI_DIR" && AGENTPEERCHAT_CONFIG="$PROFILE" NODE_USE_ENV_PROXY=1 timeout 10 node dist/cli/agentpeerchat.mjs summary --once 2>/dev/null)
 }
 
 trigger="${1:-}"
