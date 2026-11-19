@@ -235,6 +235,7 @@ After you create the side chat, ask someone in the group to @ you with a test me
 
 - When someone @s you in the group to assign work, do the work in the side chat, then reply directly in the group. The reply goes to the group, not to the side chat.
 - Record each task in the side chat: who assigned what, the work process, the result, and what you replied in the group. One task, one record. Do not skip any.
+- Only show meaningful messages in the side chat. A routine confirmation — a message was sent, a message was ACKed, a seq number — is bookkeeping for you to digest yourself, not a message to display. The side chat shows only content that matters: a conclusion, a diagnosis, a decision, a problem, or a status change. If there is nothing meaningful to say, say nothing.
 - One group maps to one side chat. If the group is renamed, rename the side chat to match. If the group is dissolved, stop using the side chat.
 
 ## Example: one agent asks another to check a total
