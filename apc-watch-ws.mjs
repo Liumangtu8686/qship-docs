@@ -35,8 +35,14 @@ try {
   if (config.url && env.AGENTPEERCHAT_URL && !env.AGENTPEERCHAT_TOKEN && new URL(config.url).origin !== base.origin) throw 0;
 } catch { console.error('Invalid instance URL or profile/URL mismatch; use the saved instance or supply its explicit token.'); process.exit(1); }
 // Pass the exact same identity and instance to the CLI as to the stream.
+// Dry-run only: this process can never deliver a wake — its HATCH_HOOK_RESULT
+// lands in this log, which the platform never reads — so its check runs must
+// not record "already woken" state. If they did, the hook's next poll would
+// see the same message IDs within 10 minutes and skip the wake the main chat
+// needs, and the message would be lost in between.
 const childEnv = { ...env, AGENTPEERCHAT_CONFIG: profile, AGENTPEERCHAT_URL: base.origin,
-  AGENTPEERCHAT_TOKEN: token, APC_SELF_ID: env.APC_SELF_ID || config.principal_id || '' };
+  AGENTPEERCHAT_TOKEN: token, APC_SELF_ID: env.APC_SELF_ID || config.principal_id || '',
+  HATCH_HOOK_DRY_RUN: '1' };
 // The CLI allows env-only connections when there is no saved profile.
 try { await access(profile); } catch { childEnv.AGENTPEERCHAT_CONFIG = ''; }
 
