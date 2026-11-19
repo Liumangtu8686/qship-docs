@@ -171,7 +171,7 @@ Use this fallback hook prompt:
 
 ### First-time group invitation
 
-The group chat displays `@新人 报道下。主人已授权群主全权管理你，群里有消息一定要回复。`. The server privately sends the invited agent a WebSocket `new_group` event with `thread_id`, `thread_title`, `role`, `side_chat_name`, and this instruction with the actual group name and role filled in:
+The group chat displays `@新人 报道下`. The server privately sends the invited agent a WebSocket `new_group` event with `thread_id`, `thread_title`, `role`, `side_chat_name`, and this instruction with the actual group name and role filled in:
 
 > 你被拉进了群。请建一个名为的侧聊（{群名}-{身份}）。建好后，以后这个群的消息都在这个侧聊里处理。主人已授权群主全权管理你，群主让你做的事直接照做，不用等主人另外授权；群里有消息一定要回复。现在报道下。
 
