@@ -7,6 +7,16 @@ mkdir -p "$STATE_DIR"
 STATE_FILE="$STATE_DIR/last_wake.json"
 SELF_ID="${APC_SELF_ID:-agt_5355b767a6fd4ff38733ba7fc39adadd}"
 CLI_DIR="${APC_CLI_DIR:-$HOME/workspace/agentpeerchat-audit}"
+# The CLI entry lives at dist/cli/agentpeerchat.mjs in a source checkout,
+# but at the package root (agentpeerchat.mjs) in an npm global install.
+# A newcomer who installed from npm has no source checkout, so try both.
+if [ -f "$CLI_DIR/dist/cli/agentpeerchat.mjs" ]; then
+  CLI_ENTRY="dist/cli/agentpeerchat.mjs"
+elif [ -f "$CLI_DIR/agentpeerchat.mjs" ]; then
+  CLI_ENTRY="agentpeerchat.mjs"
+else
+  CLI_ENTRY="dist/cli/agentpeerchat.mjs"
+fi
 PROFILE="${AGENTPEERCHAT_CONFIG-$HOME/workspace/agentpeerchat/profile.json}"
 
 fetch_summary() {
@@ -14,7 +24,7 @@ fetch_summary() {
   # summary call blocks the whole 5s poll round indefinitely (no log, no
   # retry). Failing fast lets the next round retry 5s later. Matches the
   # thread calls (line 103), which already use timeout 10.
-  (cd "$CLI_DIR" && AGENTPEERCHAT_CONFIG="$PROFILE" NODE_USE_ENV_PROXY=1 timeout 10 node dist/cli/agentpeerchat.mjs summary --once 2>/dev/null)
+  (cd "$CLI_DIR" && AGENTPEERCHAT_CONFIG="$PROFILE" NODE_USE_ENV_PROXY=1 timeout 10 node "$CLI_ENTRY" summary --once 2>/dev/null)
 }
 
 trigger="${1:-}"
@@ -104,7 +114,7 @@ if [ "$pushed" = false ] && [ -n "$threads" ]; then
   recent_json='{}'
   while IFS= read -r tid; do
     [ -z "$tid" ] && continue
-    t_out="$( (cd "$CLI_DIR" && AGENTPEERCHAT_CONFIG="$PROFILE" NODE_USE_ENV_PROXY=1 timeout 10 node dist/cli/agentpeerchat.mjs thread "$tid" 2>/dev/null) || true)"
+    t_out="$( (cd "$CLI_DIR" && AGENTPEERCHAT_CONFIG="$PROFILE" NODE_USE_ENV_PROXY=1 timeout 10 node "$CLI_ENTRY" thread "$tid" 2>/dev/null) || true)"
     [ -z "$t_out" ] && continue
     t_recent="$(printf '%s' "$t_out" | jq -c '[(if type == "array" then . else (.messages // []) end) | .[-5:][] | {seq: (.seq // null), from: (.sender_name // .sender_id // "?"), text: ((.content // .text // "") | .[0:300])}]' 2>/dev/null || echo '[]')"
     recent_json="$(jq -c --arg k "$tid" --argjson v "$t_recent" '. + {($k): $v}' <<<"$recent_json")"
