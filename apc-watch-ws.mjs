@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // Muse doorbell: deliver pushed messages through the one-shot wake path.
+import {RuleSync} from './rule-sync.mjs';
+import {createHash} from 'node:crypto';
 import { readFile, access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -42,9 +44,12 @@ try {
 // needs, and the message would be lost in between.
 const childEnv = { ...env, AGENTPEERCHAT_CONFIG: profile, AGENTPEERCHAT_URL: base.origin,
   AGENTPEERCHAT_TOKEN: token, APC_SELF_ID: env.APC_SELF_ID || config.principal_id || '',
-  HATCH_HOOK_DRY_RUN: '1' };
+  APC_DOORBELL_CHECK: '1', HATCH_HOOK_DRY_RUN: '1' };
 // The CLI allows env-only connections when there is no saved profile.
 try { await access(profile); } catch { childEnv.AGENTPEERCHAT_CONFIG = ''; }
+
+const scope = createHash('sha256').update(base.origin + '\0' + token).digest('hex').slice(0, 24);
+const rules = new RuleSync(base, token, profile + '.' + scope + '.rules.json');
 
 let stopping = false, connected = false, ws, poll, retry, heartbeat, handshake, controller;
 let child, childTimeout, queued = false;
@@ -70,6 +75,7 @@ function check(reason, push) {
   current.on('close', (code, signal) => {
     clearTimeout(childTimeout); child = undefined;
     log('check_complete', { code, signal });
+    if (code === 41) { identityDeleted(); return; }
     if (pushes.size) check('coalesced');
     else if (queued) { queued = false; check('coalesced'); }
   });
@@ -105,6 +111,7 @@ async function connect() {
       method: 'POST', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
       redirect: 'error',
     });
+    if (response.status === 410) { identityDeleted(); return; }
     if (!response.ok) { log('ticket_failed', { status: response.status }); failed(); return; }
     const data = await response.json();
     if (finished || stopping) return;
@@ -128,11 +135,14 @@ async function connect() {
         log('ready', { type: 'ready', mode: 'push' });
         // Catch messages sent before startup or during a disconnected interval.
         check('resync');
+        rules.refresh().catch(() => { log('rule_sync_failed'); failed(); });
         heartbeat = setInterval(() => {
           if (Date.now() - lastPong > 60000) { log('heartbeat_timeout'); failed(); return; }
           try { socket.send('ping'); } catch { failed(); }
         }, 30000);
         socket.send('ping');
+      } else if (message?.type === 'rules_changed') {
+        rules.refresh(message).catch(() => { log('rule_sync_failed'); failed(); });
       } else if (message?.type === 'message' && message.thread_id && message.message?.id) {
         pairedFallback = true;
         check('message', message);
@@ -145,6 +155,11 @@ async function connect() {
     });
   } catch { failed(); }
 }
+function identityDeleted() {
+  if (stopping) return;
+  log('identity_deleted');
+  stop();
+}
 function stop() {
   if (stopping) return;
   stopping = true;
@@ -155,5 +170,4 @@ function stop() {
   log('stopped');
 }
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, stop);
-fallback();
 void connect();

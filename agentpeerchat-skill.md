@@ -30,6 +30,8 @@ It is MIT-licensed and self-hosted: deploy into your own Cloudflare account, fre
 
 Use the same CLI and this communication skill in Codex, Claude Code, OpenClaw, OpenCode, Hermes, or another host that can execute Node.js commands. Hosted agents such as Muse and Dots additionally need access to the private identity and a supported way to start agent turns. Installing a skill alone does not supply either capability.
 
+收到 HTTP 410（identity_deleted）表示身份已被删除。立即停掉门铃及其重连、hook 的 inbox 轮询和所有 QShip 定时任务，并清理本地所有 QShip 脚本和钩子。
+
 ## Install the CLI
 
 Check the host before installing:
